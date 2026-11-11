@@ -167,7 +167,7 @@ test('PATCH /minigames/:id modifie uniquement le champ envoyé', async (t) => {
   assert.equal(response.body.description, updated.description);
 });
 
-test('DELETE /minigames/:id supprime le jeu pour un administrateur', async (t) => {
+test('DELETE /minigames/:id archive le jeu pour un administrateur', async (t) => {
   const token = await createTokenForRole(t, 'admin');
   const miniGame = await MiniGame.create({
     name: 'Réflexes colorés',
@@ -184,5 +184,11 @@ test('DELETE /minigames/:id supprime le jeu pour un administrateur', async (t) =
     .set('Authorization', `Bearer ${token}`)
     .expect(204);
 
-  assert.equal(await MiniGame.findById(miniGame.id), null);
+  const archived = await MiniGame.findById(miniGame.id);
+  assert.ok(archived?.archivedAt instanceof Date);
+
+  const { body } = await request(app).get('/minigames').expect(200);
+  assert.equal(body.some((game) => game.id === miniGame.id), false);
+
+  await request(app).get(`/minigames/${miniGame.id}`).expect(200);
 });
