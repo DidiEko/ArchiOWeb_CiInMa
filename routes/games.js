@@ -94,6 +94,12 @@ router.post('/:id/join', authenticate, async (req, res) => {
             });
         }
 
+        req.app.get('io')?.to(`game:${game.id}`).emit('lobby:updated', {
+            gameId: game.id,
+            players: game.players.map((playerId) => playerId.toString()),
+            status: game.status
+        });
+
         return res.json({
             id: game.id,
             createdBy: game.createdBy,
