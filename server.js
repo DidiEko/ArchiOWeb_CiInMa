@@ -51,7 +51,26 @@ try {
         }
 
         await socket.join(`game:${game._id}`);
-        return reply({ ok: true });
+        const currentGame = await Game.findOne({
+          _id: game._id,
+          players: socket.data.userId
+        }).select('createdBy players miniGames status');
+
+        if (!currentGame) {
+          await socket.leave(`game:${game._id}`);
+          return reply({ ok: false, message: 'Ce salon n’est plus accessible.' });
+        }
+
+        return reply({
+          ok: true,
+          lobby: {
+            gameId: currentGame.id,
+            createdBy: currentGame.createdBy.toString(),
+            players: currentGame.players.map((id) => id.toString()),
+            miniGames: currentGame.miniGames.map((id) => id.toString()),
+            status: currentGame.status
+          }
+        });
       } catch {
         return reply({ ok: false, message: 'Impossible de s’abonner au salon.' });
       }

@@ -239,6 +239,10 @@ router.post('/:id/start', authenticate, async (req, res) => {
         );
 
         if (game) {
+            req.app.get('io')?.to(`game:${game.id}`).emit('game:started', {
+                gameId: game.id,
+                status: game.status
+            });
             return res.json({
                 id: game.id,
                 createdBy: game.createdBy,
