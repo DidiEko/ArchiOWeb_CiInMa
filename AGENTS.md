@@ -123,3 +123,75 @@ Exemple de demande à l’IA
 - Dépôt GitHub et code de la branche `main`, état détaillé dans [ETAT_DU_PROJET.md](ETAT_DU_PROJET.md).
 - `Projet_jeu_couleurs.pdf`, fiche de concept du 28 octobre 2026. Elle synthétise des consignes d’évaluation et des pistes du groupe.
 - `Projet app mobile – fiche de synthèse.pdf`, fiche initiale du 7 octobre 2026. Elle indique que le principe de peinture multijoueur a été validé. La conception a ensuite évolué vers un catalogue de mini-jeux et un tournoi.
+
+## Données de développement et comptes de test
+
+Cette procédure prépare une base de développement locale pour jouer une partie à deux. Démarrez MongoDB et vérifiez que `.env` existe, en partant de `.env.example` si besoin.
+
+### 1. Créer le catalogue de départ
+
+```bash
+npm run seed
+```
+
+Le script crée le mini-jeu Conquête de couleurs s’il est absent. Il peut être relancé sans risque, un mini-jeu déjà présent n’est pas modifié. Démarrez ensuite l’API avec `npm start`.
+
+### 2. Créer deux comptes
+
+Créez deux comptes avec `POST /users`. Le mot de passe doit contenir au moins 12 caractères. Les valeurs ci-dessous sont des exemples locaux, choisissez vos propres mots de passe et ne les commitez pas.
+
+```bash
+curl -i -X POST http://localhost:3000/users \
+  -H "Content-Type: application/json" \
+  -d '{"username":"joueur1","email":"joueur1@example.com","password":"motdepasse-joueur1"}'
+
+curl -i -X POST http://localhost:3000/users \
+  -H "Content-Type: application/json" \
+  -d '{"username":"joueur2","email":"joueur2@example.com","password":"motdepasse-joueur2"}'
+```
+
+La réponse `201` contient l’identifiant et le rôle `player` du compte.
+
+### 3. Se connecter et obtenir un jeton
+
+Connectez chaque compte avec `POST /users/login`. La réponse contient un champ `token`.
+
+```bash
+curl -i -X POST http://localhost:3000/users/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"joueur1@example.com","password":"motdepasse-joueur1"}'
+```
+
+Refaites la même requête pour `joueur2`. Pour simplifier les commandes suivantes, placez les jetons dans des variables de votre terminal, par exemple `TOKEN1=...` et `TOKEN2=...`. Envoyez-les ensuite dans l’en-tête `Authorization: Bearer <token>`.
+
+### 4. Récupérer l’identifiant de Conquête de couleurs
+
+```bash
+curl -i http://localhost:3000/minigames
+```
+
+Repérez dans la liste l’entrée dont le `slug` vaut `conquete-de-couleurs` et copiez son `id`, par exemple dans `MINIGAME_ID=...`.
+
+### 5. Créer un salon
+
+Le premier joueur crée le salon avec `POST /games`. Le corps contient `miniGameIds`, une liste d’une à trois références de mini-jeux.
+
+```bash
+curl -i -X POST http://localhost:3000/games \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN1" \
+  -d "{\"miniGameIds\":[\"$MINIGAME_ID\"]}"
+```
+
+La réponse `201` contient l’`id` du salon. Copiez-le, par exemple dans `GAME_ID=...`.
+
+### 6. Faire rejoindre le second joueur
+
+Le second joueur rejoint le salon avec `POST /games/:id/join`.
+
+```bash
+curl -i -X POST http://localhost:3000/games/$GAME_ID/join \
+  -H "Authorization: Bearer $TOKEN2"
+```
+
+Le salon compte alors deux joueurs. Le créateur peut le lancer avec `POST /games/:id/start`.
